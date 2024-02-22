@@ -2,6 +2,7 @@ package com.example.demo.person;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -79,6 +80,14 @@ public class PersonControllerIntegrationTest {
         responseEntity = getPersonByIdRest(output.getId());
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
+    }
+
+    @Test
+    public void getPersonByIdNegative() {
+        ResponseEntity<String> responseEntity = getPersonByIdRest(UUID.randomUUID());
+        assertEquals(HttpStatus.NOT_FOUND, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
+        assertTrue(responseEntity.getBody().contains("Could not find person with id:"));
     }
 
     /*

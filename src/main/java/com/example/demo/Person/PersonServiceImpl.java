@@ -8,6 +8,8 @@ import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.person.exceptions.PersonNotFoundException;
+
 import lombok.AllArgsConstructor;
 
 @Service
@@ -45,10 +47,8 @@ public class PersonServiceImpl implements PersonService {
         }
 
         Optional<Person> person = repository.findById(id);
-
         if (!person.isPresent()) {
-            // TODO: Proper Response Entity Error handling
-            throw new RuntimeException("Person not found");
+            throw new PersonNotFoundException(id);
         }
         return convertToDTO(person.get());
     }
