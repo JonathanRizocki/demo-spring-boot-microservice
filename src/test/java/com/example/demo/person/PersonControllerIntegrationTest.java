@@ -3,8 +3,10 @@ package com.example.demo.person;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,7 +22,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import com.example.demo.person.PersonDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -40,22 +41,22 @@ public class PersonControllerIntegrationTest {
     @LocalServerPort
     private int port;
 
+    private String createPersonURL;
+    private String getPersonByIdURL;
+
+    @BeforeEach
+    public void setup() {
+        String base = "http://localhost:" + port;
+        createPersonURL =  base + "/person";
+        getPersonByIdURL = createPersonURL + "/";
+    }
+
     @Test
     public void createPerson() {
-
-        String url = "http://localhost:" + port + "/person";
-
         PersonDTO input = generatePersonDTO();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Content-Type", "application/json");
-
+        HttpHeaders headers = createHttpHeaders();
         HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(input, headers);
-
-        ResponseEntity<String> responseEntity = restTemplate.postForEntity(
-                url,
-                requestEntity,
-                String.class);
+        ResponseEntity<String> responseEntity = createPersonPostRest(requestEntity);
 
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
@@ -64,9 +65,41 @@ public class PersonControllerIntegrationTest {
         assertNotNull(output.getId());
         output.setId(null);
         assertEquals(input, output);
-
     }
 
+    @Test
+    public void getPersonById() {
+        ResponseEntity<String> responseEntity = buildAndCreatePerson(Optional.empty());
+
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
+
+        PersonDTO output = deserailizePersonDTO(responseEntity.getBody());
+
+        responseEntity = getPersonByIdRest(output.getId());
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
+    }
+
+    /*
+     * Rest Endpoint Helper Functions
+     */
+    private ResponseEntity<String> createPersonPostRest(HttpEntity<PersonDTO> input) {
+        return restTemplate.postForEntity(
+            createPersonURL,
+            input,
+            String.class);
+    }
+
+    private ResponseEntity<String> getPersonByIdRest(UUID id) {
+        return restTemplate.getForEntity(
+            getPersonByIdURL + id, 
+            String.class);
+    }
+
+    /*
+     * Data Generation Helper Functions
+     */
     private PersonDTO generatePersonDTO() {
         UUID seed = UUID.randomUUID();
         PersonDTO o = PersonDTO.builder()
@@ -76,14 +109,34 @@ public class PersonControllerIntegrationTest {
         return o;
     }
 
-    private PersonDTO deserailizePersonDTO(String input) {
-        PersonDTO output = new PersonDTO();
+    private PersonDTO deserailizePersonDTO(String i) {
+        PersonDTO o = new PersonDTO();
         try {
-            output = objectMapper.readValue(input, PersonDTO.class);
+            o = objectMapper.readValue(i, PersonDTO.class);
         } catch (Exception e) {
             throw new RuntimeException("Unable to process input");
         } 
-        return output;
+        return o;
+    }
+
+    private HttpHeaders createHttpHeaders() {
+        HttpHeaders o = new HttpHeaders();
+        o.set("Content-Type", "application/json");
+        return o;
+    }
+
+    /*
+     * Repetitive CRUD operation helper functions
+     */
+    private ResponseEntity<String> buildAndCreatePerson(Optional<PersonDTO> opt) {
+        PersonDTO input = generatePersonDTO();
+        if (opt != null && opt.isPresent()) {
+            input = opt.get();
+        }
+
+        HttpHeaders headers = createHttpHeaders();
+        HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(input, headers);
+        return createPersonPostRest(requestEntity);
     }
     
 }
