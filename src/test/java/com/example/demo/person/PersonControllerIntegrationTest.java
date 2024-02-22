@@ -83,11 +83,18 @@ public class PersonControllerIntegrationTest {
     }
 
     @Test
-    public void getPersonByIdNegative() {
+    public void getPersonById_notFound() {
         ResponseEntity<String> responseEntity = getPersonByIdRest(UUID.randomUUID());
         assertEquals(HttpStatus.NOT_FOUND, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
         assertTrue(responseEntity.getBody().contains("Could not find person with id:"));
+    }
+
+    @Test
+    public void getPersonById_inputValidation() {
+        ResponseEntity<String> responseEntity = getPersonByIdRest(null);
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
     }
 
     /*

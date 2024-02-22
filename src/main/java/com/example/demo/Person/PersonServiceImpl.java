@@ -41,16 +41,9 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     public PersonDTO getPersonById(UUID id) {
-        if (id == null) {
-            // TODO: Proper Response Entity Error handling
-            throw new RuntimeException("null ID");
-        }
-
-        Optional<Person> person = repository.findById(id);
-        if (!person.isPresent()) {
-            throw new PersonNotFoundException(id);
-        }
-        return convertToDTO(person.get());
+        Person o = repository.findById(id)
+            .orElseThrow(() -> new PersonNotFoundException(id));
+        return convertToDTO(o);
     }
 
     @Override
