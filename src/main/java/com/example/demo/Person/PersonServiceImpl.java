@@ -1,4 +1,4 @@
-package com.example.demo.Person;
+package com.example.demo.person;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +16,6 @@ public class PersonServiceImpl implements PersonService {
 
     private final PersonRepository repository;
     private final ModelMapper modelMapper;
-
     
     @Override
     public List<PersonDTO> findAll() {
