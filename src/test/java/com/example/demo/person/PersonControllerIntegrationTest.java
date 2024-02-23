@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,8 +19,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -44,12 +48,24 @@ public class PersonControllerIntegrationTest {
 
     private String createPersonURL;
     private String getPersonByIdURL;
+    private String patchPersonUrl;
 
     @BeforeEach
     public void setup() {
+        /*
+         * Required to create httpClient & factory for PATCH HttpMethod :(
+         * PATCH is not natively supported by RestTemplate.
+         */
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        HttpComponentsClientHttpRequestFactory factory = 
+            new HttpComponentsClientHttpRequestFactory(httpClient);
+        restTemplate.getRestTemplate().setRequestFactory(factory);
+
         String base = "http://localhost:" + port;
-        createPersonURL =  base + "/person";
-        getPersonByIdURL = createPersonURL + "/";
+        String resourcePath = "/person";
+        createPersonURL =  base + resourcePath;
+        getPersonByIdURL = base + resourcePath + "/";
+        patchPersonUrl = base + resourcePath + "/";
     }
 
     @Test
@@ -95,6 +111,31 @@ public class PersonControllerIntegrationTest {
         ResponseEntity<String> responseEntity = getPersonByIdRest(null);
         assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
+    }
+
+    @Test
+    public void patchPerson() {
+        ResponseEntity<String> responseEntity = buildAndCreatePerson(Optional.empty());
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
+
+
+        PersonDTO original = deserailizePersonDTO(responseEntity.getBody());
+
+        String seed = UUID.randomUUID().toString();
+        PersonDTO changes = PersonDTO.builder()
+            .firstName(seed)
+            .lastName(seed)
+            .build();
+        
+        responseEntity = patchPerson(original.getId(), changes);
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
+
+        PersonDTO updated = deserailizePersonDTO(responseEntity.getBody());
+
+        assertEquals(changes.getFirstName(), updated.getFirstName());
+        assertEquals(changes.getLastName(), updated.getLastName());
     }
 
     /*
@@ -144,6 +185,11 @@ public class PersonControllerIntegrationTest {
     /*
      * Repetitive CRUD operation helper functions
      */
+    /**
+     * build and Create a Person entity
+     * @param opt supply if you want to provide specific field values
+     * @return
+     */
     private ResponseEntity<String> buildAndCreatePerson(Optional<PersonDTO> opt) {
         PersonDTO input = generatePersonDTO();
         if (opt != null && opt.isPresent()) {
@@ -153,6 +199,17 @@ public class PersonControllerIntegrationTest {
         HttpHeaders headers = createHttpHeaders();
         HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(input, headers);
         return createPersonPostRest(requestEntity);
+    }
+
+    private ResponseEntity<String> patchPerson(UUID id, PersonDTO requestBody) {
+        HttpHeaders headers = createHttpHeaders();
+        HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        return restTemplate
+            .exchange(patchPersonUrl + id,
+            HttpMethod.PATCH,
+            requestEntity,
+            String.class);
     }
     
 }

@@ -1,11 +1,15 @@
 package com.example.demo.person;
 
+import java.beans.PropertyDescriptor;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.person.exceptions.PersonNotFoundException;
@@ -47,16 +51,45 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
-    public PersonDTO updatePersonByID(UUID id, PersonDTO delta) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'updatePersonByID'");
+    public PersonDTO updatePersonByID(UUID id, PersonDTO changes) {
+        Person target = repository.findById(id)
+            .orElseThrow(() -> new PersonNotFoundException(id));
+
+        Person delta = convertToEntity(changes);
+        delta.setId(id);
+        copyProperties(delta, target);
+
+        Person result = repository.save(target);
+        return convertToDTO(result);
     }
 
-    public Person convertToEntity(PersonDTO personDTO) {
+    private Person convertToEntity(PersonDTO personDTO) {
         return modelMapper.map(personDTO, Person.class);
     }
 
-    public PersonDTO convertToDTO(Person person) {
+    private PersonDTO convertToDTO(Person person) {
         return modelMapper.map(person, PersonDTO.class);
+    }
+
+    private void copyProperties(Person source, Person target) {
+        Set<String> excludedProperties = new HashSet<>();
+        excludedProperties.add("createdAt");
+        excludedProperties.add("createdBy");
+        excludedProperties.add("version");
+
+        PropertyDescriptor[] descriptors = BeanUtils.getPropertyDescriptors(source.getClass());
+        for (PropertyDescriptor descriptor : descriptors) {
+            if (!excludedProperties.contains(descriptor.getName())) {
+                try {
+                    Object originalValue = descriptor.getReadMethod().invoke(source);
+                    if (originalValue != null) {
+                        descriptor.getWriteMethod().invoke(target, originalValue);
+                    }
+                } catch (Exception e) {
+                    // Handle exception as needed
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 }

@@ -23,7 +23,7 @@ public class PersonResource {
     private final PersonService service;
 
 	@PostMapping("")
-	public ResponseEntity<PersonDTO> createPerson(@RequestBody PersonDTO p) {
+	public ResponseEntity<PersonDTO> createResource(@RequestBody PersonDTO p) {
 		PersonDTO output = service.createPerson(p);
 		return ResponseEntity.ok(output);
 	}
@@ -35,15 +35,17 @@ public class PersonResource {
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<PersonDTO> getPerson(@PathVariable UUID id) {
+	public ResponseEntity<PersonDTO> getResource(@PathVariable UUID id) {
 		PersonDTO p = service.getPersonById(id);
 		return ResponseEntity.ok(p);
 	}
 
 	@PatchMapping("/{id}")
-	public ResponseEntity<PersonDTO> updatePerson(@PathVariable UUID id, PersonDTO delta) {
+	public ResponseEntity<PersonDTO> updateResource(
+			@PathVariable UUID id, 
+			@RequestBody PersonDTO delta) {
 		PersonDTO p = service.updatePersonByID(id, delta);
-		return ResponseEntity.ok(p);
+		return ResponseEntity.ok(delta);
 	}
     
 }
