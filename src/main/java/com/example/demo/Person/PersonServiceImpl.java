@@ -11,8 +11,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.globalexceptions.RequiredFieldException;
 import com.example.demo.person.exceptions.PersonNotFoundException;
-import com.example.demo.person.exceptions.RequiredFieldException;
 
 import lombok.AllArgsConstructor;
 

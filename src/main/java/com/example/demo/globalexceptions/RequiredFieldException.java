@@ -1,4 +1,4 @@
-package com.example.demo.person.exceptions;
+package com.example.demo.globalexceptions;
 
 public class RequiredFieldException extends RuntimeException{
 
