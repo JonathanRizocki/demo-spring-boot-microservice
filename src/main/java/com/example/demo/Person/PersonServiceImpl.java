@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.globalexceptions.RequiredFieldException;
@@ -77,26 +79,22 @@ public class PersonServiceImpl implements PersonService {
     }
 
     private void copyProperties(Person source, Person target) {
-        Set<String> excludedProperties = new HashSet<>();
-        excludedProperties.add("createdAt");
-        excludedProperties.add("createdBy");
-        excludedProperties.add("version");
+        // Use BeanUtils.copyProperties to copy non-null properties from source to target
+        BeanUtils.copyProperties(source, target, getNullPropertyNames(source));
+    }
 
-        PropertyDescriptor[] descriptors = BeanUtils.getPropertyDescriptors(source.getClass());
-        for (PropertyDescriptor descriptor : descriptors) {
-            if (!excludedProperties.contains(descriptor.getName())) {
-                try {
-                    Object originalValue = descriptor.getReadMethod().invoke(source);
-                    if (originalValue != null) {
-                        descriptor.getWriteMethod().invoke(target, originalValue);
-                    }
-                } catch (Exception e) {
-                    // Handle exception as needed
-                    e.printStackTrace();
-                    throw new RuntimeException(e.getMessage());
-                }
-            }
+    private String[] getNullPropertyNames(Person source) {
+        final BeanWrapper src = new BeanWrapperImpl(source);
+        PropertyDescriptor[] pds = src.getPropertyDescriptors();
+
+        Set<String> emptyNames = new HashSet<>();
+        for (PropertyDescriptor pd : pds) {
+            Object srcValue = src.getPropertyValue(pd.getName());
+            if (srcValue == null) 
+                emptyNames.add(pd.getName());
         }
+        String[] result = new String[emptyNames.size()];
+        return emptyNames.toArray(result);
     }
 
     public void requiredFieldId(UUID id) {

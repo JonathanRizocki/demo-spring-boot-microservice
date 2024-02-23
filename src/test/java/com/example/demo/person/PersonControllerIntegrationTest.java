@@ -74,8 +74,8 @@ public class PersonControllerIntegrationTest {
         PersonDTO input = generatePersonDTO();
         HttpHeaders headers = createHttpHeaders();
         HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(input, headers);
-        ResponseEntity<String> responseEntity = createPersonPostRest(requestEntity);
 
+        ResponseEntity<String> responseEntity = createPersonPostRest(requestEntity);
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
 
@@ -88,7 +88,6 @@ public class PersonControllerIntegrationTest {
     @Test
     public void getPersonById() {
         ResponseEntity<String> responseEntity = buildAndCreatePerson(Optional.empty());
-
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
 
@@ -121,7 +120,6 @@ public class PersonControllerIntegrationTest {
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
 
-
         PersonDTO original = deserailizePersonDTO(responseEntity.getBody());
 
         String seed = UUID.randomUUID().toString();
@@ -135,7 +133,7 @@ public class PersonControllerIntegrationTest {
         assertNotNull(responseEntity.getBody());
 
         PersonDTO updated = deserailizePersonDTO(responseEntity.getBody());
-
+        assertEquals(original.getId(), updated.getId());
         assertEquals(changes.getFirstName(), updated.getFirstName());
         assertEquals(changes.getLastName(), updated.getLastName());
     }
