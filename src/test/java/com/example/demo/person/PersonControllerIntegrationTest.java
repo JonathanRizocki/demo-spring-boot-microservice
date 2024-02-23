@@ -57,6 +57,7 @@ public class PersonControllerIntegrationTest {
          * PATCH is not natively supported by RestTemplate.
          */
         CloseableHttpClient httpClient = HttpClients.createDefault();
+        @SuppressWarnings("null")
         HttpComponentsClientHttpRequestFactory factory = 
             new HttpComponentsClientHttpRequestFactory(httpClient);
         restTemplate.getRestTemplate().setRequestFactory(factory);
@@ -98,6 +99,7 @@ public class PersonControllerIntegrationTest {
         assertNotNull(responseEntity.getBody());
     }
 
+    @SuppressWarnings("null")
     @Test
     public void getPersonById_notFound() {
         ResponseEntity<String> responseEntity = getPersonByIdRest(UUID.randomUUID());

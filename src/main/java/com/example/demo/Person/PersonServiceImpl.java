@@ -3,7 +3,6 @@ package com.example.demo.person;
 import java.beans.PropertyDescriptor;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -13,6 +12,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.person.exceptions.PersonNotFoundException;
+import com.example.demo.person.exceptions.RequiredFieldException;
 
 import lombok.AllArgsConstructor;
 
@@ -45,6 +45,8 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     public PersonDTO getPersonById(UUID id) {
+        requiredFieldId(id);
+        @SuppressWarnings("null")
         Person o = repository.findById(id)
             .orElseThrow(() -> new PersonNotFoundException(id));
         return convertToDTO(o);
@@ -52,6 +54,8 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     public PersonDTO updatePersonByID(UUID id, PersonDTO changes) {
+        requiredFieldId(id);
+        @SuppressWarnings("null")
         Person target = repository.findById(id)
             .orElseThrow(() -> new PersonNotFoundException(id));
 
@@ -59,6 +63,7 @@ public class PersonServiceImpl implements PersonService {
         delta.setId(id);
         copyProperties(delta, target);
 
+        @SuppressWarnings("null")
         Person result = repository.save(target);
         return convertToDTO(result);
     }
@@ -88,8 +93,15 @@ public class PersonServiceImpl implements PersonService {
                 } catch (Exception e) {
                     // Handle exception as needed
                     e.printStackTrace();
+                    throw new RuntimeException(e.getMessage());
                 }
             }
+        }
+    }
+
+    public void requiredFieldId(UUID id) {
+        if (id == null) {
+            throw new RequiredFieldException("id");
         }
     }
 }

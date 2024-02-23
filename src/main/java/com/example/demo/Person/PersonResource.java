@@ -45,7 +45,7 @@ public class PersonResource {
 			@PathVariable UUID id, 
 			@RequestBody PersonDTO delta) {
 		PersonDTO p = service.updatePersonByID(id, delta);
-		return ResponseEntity.ok(delta);
+		return ResponseEntity.ok(p);
 	}
     
 }
