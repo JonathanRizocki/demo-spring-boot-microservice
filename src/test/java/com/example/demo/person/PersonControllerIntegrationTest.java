@@ -25,14 +25,16 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.extern.slf4j.Slf4j;
+
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @Testcontainers
+@Slf4j
 public class PersonControllerIntegrationTest {
-
     @Container
     @ServiceConnection
     private static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16.2");
-    
+
     @Autowired
     private ObjectMapper objectMapper;
     
@@ -50,13 +52,14 @@ public class PersonControllerIntegrationTest {
 
         restClient = RestClient.builder()
             .defaultHeader("content-type", MediaType.APPLICATION_JSON.toString())
-            // .defaultStatusHandler(HttpStatusCode::is4xxClientError,
-            //     (request, response) -> {
-            //         System.out.println("Client Error Status " + 
-            //             response.getStatusCode());
-            //         System.out.println("Client Error Body " + 
-            //             new String(response.getBody().readAllBytes()));
-            //     })
+            .defaultStatusHandler(HttpStatusCode::is4xxClientError,
+                (req, res) -> {
+                    log.error("Client Error Status: " + res.getStatusCode());
+                })
+            .defaultStatusHandler(HttpStatusCode::is5xxServerError,
+                (req, res) -> {
+                    log.error("Server Error Status: " + res.getStatusCode());
+                })
             .build();
         
         String base = "http://localhost:" + port;
@@ -149,8 +152,6 @@ public class PersonControllerIntegrationTest {
         return restClient.get()
             .uri(getPersonByIdURL + id)
             .retrieve()
-            .onStatus(HttpStatusCode::is4xxClientError,(req, res) -> 
-                System.out.println("ClientError: " + res.getStatusText()))
             .toEntity(String.class);
     }
 
