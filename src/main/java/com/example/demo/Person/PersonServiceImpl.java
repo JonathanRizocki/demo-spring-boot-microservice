@@ -17,6 +17,7 @@ import com.example.demo.globalexceptions.RequiredFieldException;
 import com.example.demo.person.exceptions.PersonNotFoundException;
 
 import lombok.AllArgsConstructor;
+import lombok.NonNull;
 
 @Service
 @AllArgsConstructor
@@ -78,12 +79,12 @@ public class PersonServiceImpl implements PersonService {
         return modelMapper.map(person, PersonDTO.class);
     }
 
-    private void copyProperties(Person source, Person target) {
+    private void copyProperties(@NonNull Person source, @NonNull Person target) {
         // Use BeanUtils.copyProperties to copy non-null properties from source to target
         BeanUtils.copyProperties(source, target, getNullPropertyNames(source));
     }
 
-    private String[] getNullPropertyNames(Person source) {
+    private String[] getNullPropertyNames(@NonNull Person source) {
         final BeanWrapper src = new BeanWrapperImpl(source);
         PropertyDescriptor[] pds = src.getPropertyDescriptors();
 

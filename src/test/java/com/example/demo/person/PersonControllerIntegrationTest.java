@@ -7,22 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -38,13 +34,12 @@ public class PersonControllerIntegrationTest {
     private static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16.2");
     
     @Autowired
-	private TestRestTemplate restTemplate;
-
-    @Autowired
     private ObjectMapper objectMapper;
-
+    
     @LocalServerPort
     private int port;
+
+    private RestClient restClient;
 
     private String createPersonURL;
     private String getPersonByIdURL;
@@ -52,16 +47,18 @@ public class PersonControllerIntegrationTest {
 
     @BeforeEach
     public void setup() {
-        /*
-         * Required to create httpClient & factory for PATCH HttpMethod :(
-         * PATCH is not natively supported by RestTemplate.
-         */
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-        @SuppressWarnings("null")
-        HttpComponentsClientHttpRequestFactory factory = 
-            new HttpComponentsClientHttpRequestFactory(httpClient);
-        restTemplate.getRestTemplate().setRequestFactory(factory);
 
+        restClient = RestClient.builder()
+            .defaultHeader("content-type", MediaType.APPLICATION_JSON.toString())
+            // .defaultStatusHandler(HttpStatusCode::is4xxClientError,
+            //     (request, response) -> {
+            //         System.out.println("Client Error Status " + 
+            //             response.getStatusCode());
+            //         System.out.println("Client Error Body " + 
+            //             new String(response.getBody().readAllBytes()));
+            //     })
+            .build();
+        
         String base = "http://localhost:" + port;
         String resourcePath = "/person";
         createPersonURL =  base + resourcePath;
@@ -72,10 +69,8 @@ public class PersonControllerIntegrationTest {
     @Test
     public void createPerson() {
         PersonDTO input = generatePersonDTO();
-        HttpHeaders headers = createHttpHeaders();
-        HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(input, headers);
 
-        ResponseEntity<String> responseEntity = createPersonPostRest(requestEntity);
+        ResponseEntity<String> responseEntity = createPersonPostRest(input);
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
 
@@ -141,17 +136,22 @@ public class PersonControllerIntegrationTest {
     /*
      * Rest Endpoint Helper Functions
      */
-    private ResponseEntity<String> createPersonPostRest(HttpEntity<PersonDTO> input) {
-        return restTemplate.postForEntity(
-            createPersonURL,
-            input,
-            String.class);
+    @SuppressWarnings("null")
+    private ResponseEntity<String> createPersonPostRest(PersonDTO input) {
+        return restClient.post()
+            .uri(createPersonURL)
+            .body(input)
+            .retrieve()
+            .toEntity(String.class);
     }
 
     private ResponseEntity<String> getPersonByIdRest(UUID id) {
-        return restTemplate.getForEntity(
-            getPersonByIdURL + id, 
-            String.class);
+        return restClient.get()
+            .uri(getPersonByIdURL + id)
+            .retrieve()
+            .onStatus(HttpStatusCode::is4xxClientError,(req, res) -> 
+                System.out.println("ClientError: " + res.getStatusText()))
+            .toEntity(String.class);
     }
 
     /*
@@ -176,12 +176,6 @@ public class PersonControllerIntegrationTest {
         return o;
     }
 
-    private HttpHeaders createHttpHeaders() {
-        HttpHeaders o = new HttpHeaders();
-        o.set("Content-Type", "application/json");
-        return o;
-    }
-
     /*
      * Repetitive CRUD operation helper functions
      */
@@ -196,20 +190,15 @@ public class PersonControllerIntegrationTest {
             input = opt.get();
         }
 
-        HttpHeaders headers = createHttpHeaders();
-        HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(input, headers);
-        return createPersonPostRest(requestEntity);
+        return createPersonPostRest(input);
     }
 
+    @SuppressWarnings("null")
     private ResponseEntity<String> patchPerson(UUID id, PersonDTO requestBody) {
-        HttpHeaders headers = createHttpHeaders();
-        HttpEntity<PersonDTO> requestEntity = new HttpEntity<>(requestBody, headers);
-
-        return restTemplate
-            .exchange(patchPersonUrl + id,
-            HttpMethod.PATCH,
-            requestEntity,
-            String.class);
+        return restClient.patch()
+            .uri(patchPersonUrl + id)
+            .body(requestBody)
+            .retrieve()
+            .toEntity(String.class);
     }
-    
 }
