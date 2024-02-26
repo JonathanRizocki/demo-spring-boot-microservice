@@ -26,9 +26,11 @@ Before running this application, ensure you have the following installed:
 
 ## Usage
 
-To run the application, execute the following command:
+To run the application, execute the following commands:
 
 ```bash
+mvn clean package
+
 mvn spring-boot:run
 ```
 
