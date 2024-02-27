@@ -33,7 +33,8 @@ import lombok.extern.slf4j.Slf4j;
 public class PersonControllerIntegrationTest {
     @Container
     @ServiceConnection
-    private static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16.2");
+    private static PostgreSQLContainer<?> postgres = 
+        new PostgreSQLContainer<>("postgres:16.2");
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -46,10 +47,10 @@ public class PersonControllerIntegrationTest {
     private String createPersonURL;
     private String getPersonByIdURL;
     private String patchPersonUrl;
+    private String searchPersonUrl;
 
     @BeforeEach
     public void setup() {
-
         restClient = RestClient.builder()
             .defaultHeader("content-type", MediaType.APPLICATION_JSON.toString())
             .defaultStatusHandler(HttpStatusCode::is4xxClientError,
@@ -67,6 +68,7 @@ public class PersonControllerIntegrationTest {
         createPersonURL =  base + resourcePath;
         getPersonByIdURL = base + resourcePath + "/";
         patchPersonUrl = base + resourcePath + "/";
+        searchPersonUrl = base + resourcePath + "/search";
     }
 
     @Test
@@ -136,6 +138,44 @@ public class PersonControllerIntegrationTest {
         assertEquals(changes.getLastName(), updated.getLastName());
     }
 
+    @Test
+    public void paginatedSearch() {
+        PersonDTO p1 = PersonDTO.builder()
+            .firstName("first123")
+            .lastName("lastName123")
+            .build();
+
+        PersonDTO p2 = PersonDTO.builder()
+            .firstName("first456")
+            .lastName("lastName456")
+            .build();
+
+        PersonDTO p3 = PersonDTO.builder()
+            .firstName("Some other value")
+            .lastName("Different value")
+            .build();
+
+        buildAndCreatePerson(Optional.of(p1));
+        buildAndCreatePerson(Optional.of(p2));
+        buildAndCreatePerson(Optional.of(p3));
+
+        PersonSearchDTO input = PersonSearchDTO.builder().build();
+        ResponseEntity<String> searchResults = searchPerson(input);
+        assertEquals(HttpStatus.OK, searchResults.getStatusCode());
+        assertNotNull(searchResults.getBody());
+
+        PageablePerson paged = deserializPageablePerson(searchResults.getBody());
+        assertNotNull(paged);
+        assertEquals(3, paged.getNumberOfElements());
+        assertEquals(1, paged.getTotalPages());
+
+        input.setFirstName("first");
+        searchResults = searchPerson(input);
+        paged = deserializPageablePerson(searchResults.getBody());
+        assertNotNull(paged);
+        assertEquals(2, paged.getNumberOfElements());
+    }
+
     /*
      * Rest Endpoint Helper Functions
      */
@@ -151,6 +191,23 @@ public class PersonControllerIntegrationTest {
     private ResponseEntity<String> getPersonByIdRest(UUID id) {
         return restClient.get()
             .uri(getPersonByIdURL + id)
+            .retrieve()
+            .toEntity(String.class);
+    }
+
+    @SuppressWarnings("null")
+    private ResponseEntity<String> patchPerson(UUID id, PersonDTO requestBody) {
+        return restClient.patch()
+            .uri(patchPersonUrl + id)
+            .body(requestBody)
+            .retrieve()
+            .toEntity(String.class);
+    }
+
+    private ResponseEntity<String> searchPerson(PersonSearchDTO requestBody) {
+        return restClient.post()
+            .uri(searchPersonUrl)
+            .body(requestBody)
             .retrieve()
             .toEntity(String.class);
     }
@@ -177,6 +234,17 @@ public class PersonControllerIntegrationTest {
         return o;
     }
 
+    private PageablePerson deserializPageablePerson(String i) {
+        PageablePerson o = new PageablePerson();
+        try {
+            o = objectMapper.readValue(i, PageablePerson.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to process input");
+        } 
+        return o;
+    }
+
+
     /*
      * Repetitive CRUD operation helper functions
      */
@@ -194,12 +262,5 @@ public class PersonControllerIntegrationTest {
         return createPersonPostRest(input);
     }
 
-    @SuppressWarnings("null")
-    private ResponseEntity<String> patchPerson(UUID id, PersonDTO requestBody) {
-        return restClient.patch()
-            .uri(patchPersonUrl + id)
-            .body(requestBody)
-            .retrieve()
-            .toEntity(String.class);
-    }
+    
 }
